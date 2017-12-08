@@ -3,6 +3,7 @@ package main
 import (
 	"config"
 	//"encoding/json"
+	"encoding/hex"
 	"net/http"
 	"io"
 	"sort"
@@ -40,10 +41,10 @@ func WechatHandle(w http.ResponseWriter,r *http.Request){
 		h := sha1.New()
 		h.Write([]byte(strsha1))
 		shabyte := h.Sum(nil)
-		if string(shabyte[:]) == signature {
+		if hex.EncodeToString(shabyte) == signature {
 			io.WriteString(w,echostr)
 		} else {
-			io.WriteString(w,"")
+			io.WriteString(w,"signatrue error")
 		}
 	} else if r.Method == "POST" {
 
