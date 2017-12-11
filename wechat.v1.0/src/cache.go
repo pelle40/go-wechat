@@ -49,8 +49,10 @@ func handleCon(conn net.Conn,req chan Request){
 			res,
 		}
 	}
+	fmt.Println(strRequest)
 	req <- request
 	response := <-res
+	fmt.Println(response)
 	conn.Write([]byte(response))
 }
 
