@@ -27,16 +27,6 @@ type Cache struct{
 	ReqC chan Request
 }
 
-func (cache Cache)checkerr(err interface{}) {
-	if err != nil{
-		errors.New("An Error Occured!")
-	}
-}
-func (cache Cache)reply(conn net.Conn,result string){
-	conn.Write([]byte(result))
-	conn.Close();
-}
-
 func (cache *Cache)Start(ntp,addr string){
 	//建立连接
 	tcpAddr,err := net.ResolveTCPAddr(ntp,addr)
@@ -55,6 +45,16 @@ func (cache *Cache)Start(ntp,addr string){
 		cache.checkerr(err)
 		go cache.handleConnection(conn)
 	}
+}
+
+func (cache Cache)checkerr(err interface{}) {
+	if err != nil{
+		errors.New("An Error Occured!")
+	}
+}
+func (cache Cache)reply(conn net.Conn,result string){
+	conn.Write([]byte(result))
+	conn.Close();
 }
 
 func (cache Cache)handleConnection(conn net.Conn){
