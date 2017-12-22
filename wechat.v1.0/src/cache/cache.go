@@ -3,11 +3,13 @@ package main
 //const VERSION = "1.0"
 
 import (
+	"io"
 	"os"
 	"net"
 	"fmt"
 	"path"
 	"time"
+	"bufio"
 	"errors"
 	"regexp"
 	"strings"
@@ -35,26 +37,32 @@ type Cache struct{
 }
 
 func (cache *Cache)Start(ntp,addr,datafile string,capcity int){
-	//建立连接
-	tcpAddr,err := net.ResolveTCPAddr(ntp,addr)
-	cache.checkerr(err)
-	tcpListener,err := net.ListenTCP(ntp,tcpAddr)
-	cache.checkerr(err)
 	cache.ReqC = make(chan Request,capcity)
 	cache.Data = make(map[string]string)
 	cache.UpFlag = make(chan int,1)
+	//加载数据
 	cache.dataFile = datafile
+	cache.loadDataFromFile()
+	//处理请求
 	go func() {
 		for {
 			cache.getData()
 		}
 	}()
+	//更新数据到文件
 	go func() {
 		for{
-			_ := <-cache.UpFlag
-			cache.updateDataToFile()
+			flag := <-cache.UpFlag
+			if flag==1{
+				cache.updateDataToFile()
+			}
 		}
-	}
+	}()
+	//建立连接
+	tcpAddr,err := net.ResolveTCPAddr(ntp,addr)
+	cache.checkerr(err)
+	tcpListener,err := net.ListenTCP(ntp,tcpAddr)
+	cache.checkerr(err)
 	for {
 		conn,err := tcpListener.Accept()
 		cache.checkerr(err)
@@ -131,15 +139,39 @@ func (cache *Cache)getData() {
 		request.ch <- "ok"
 	}
 }
+func (cache *Cache)loadDataFromFile() {
+	datafile,err := os.Open(cache.dataFile)
+	if err!=nil{
+		return
+	}
+	buf := bufio.NewReader(datafile)
+	for{
+		line,err := buf.ReadString('\n')
+		if err!=nil && err!=io.EOF{
+			return
+		}
+		linedata := strings.TrimSpace(line)
+		arrLineData := regexp.MustCompile(",").Split(linedata,3)
+		if len(arrLineData)>=2{
+			cache.Data[arrLineData[0]] = arrLineData[1]
+		}
+		if err==io.EOF{
+			return
+		}
+	}
+}
 func (cache *Cache)updateDataToFile() {
 	//数据文件
-	datafile,err := os.OpenFile(cache.dataFile,os.O_TRUNC,0666)
+	datafile,err := os.OpenFile(cache.dataFile,os.O_RDWR|os.O_CREATE|os.O_TRUNC,0666)
 	if err!=nil{
-		fmt.Println("Create or Open data file error!")
+		fmt.Println("Create or Open data file error!"+cache.dataFile)
 		return
 	}
 	for k,v := range cache.Data{
-		datafile.WriteString(k+","+v+"\n")
+		_,err := datafile.WriteString(k+","+v+"\n")
+		if err!=nil{
+			fmt.Println(err)
+		}
 	}
 	datafile.Close()
 }
@@ -151,9 +183,9 @@ func main() {
 		cmd := exec.Command(filepath)
 		//日志文件
 		filename := path.Join(folder,"log"+time.Now().Format("2006-01-02")+".log")
-		openfile,err := os.OpenFile(filename,os.O_CREATE,0666)
+		logfile,err := os.OpenFile(filename,os.O_CREATE,0666)
 		if err!=nil{
-			return nil,errors.New("Create file error")
+			return
 		}
 		defer logfile.Close()
 		//标准输入输出
@@ -164,6 +196,6 @@ func main() {
 		return
 	}
 	cache := Cache{}
-	datafilename := path.Join(folder,'data')
+	datafilename := path.Join(folder,"data")
 	cache.Start("tcp",":3001",datafilename,1024)
 }
