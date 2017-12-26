@@ -159,6 +159,7 @@ func (cache *Cache)loadDataFromFile() {
 			return
 		}
 	}
+	datafile.Close()
 }
 func (cache *Cache)updateDataToFile() {
 	//数据文件

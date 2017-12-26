@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path"
 	"wechat"
 	"os/exec"
 	"net/http"
@@ -12,10 +13,16 @@ import (
 func main() {
 	if os.Getppid()!=1{
 		filePath,_ := filepath.Abs(os.Args[0])
+		folder,_ := os.Getwd()
+		logfile := path.Join(folder,'wechat.server.log')
+		logfile,err := os.OpenFile(logfile,os.O_CREATE,0666)
+		if err!=nil{
+			return
+		}
 		cmd := exec.Command(filePath)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdin = logfile
+		cmd.Stdout = logfile
+		cmd.Stderr = logfile
 		cmd.Start()
 		return
 	}
